@@ -1,0 +1,58 @@
+
+name: Build Lingloom APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Extract Lingloom project
+        run: |
+          unzip Lingloom_Pro_Starter.zip -d source
+          cd source/Lingloom
+          npm install
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+          echo '{"appId":"com.lingloom.app","appName":"Lingloom","webDir":"dist"}' > capacitor.config.json
+
+      - name: Build web app
+        working-directory: source/Lingloom
+        run: npm run build
+
+      - name: Create Android project
+        working-directory: source/Lingloom
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Build APK
+        working-directory: source/Lingloom/android
+        run: chmod +x gradlew && ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lingloom-APK
+          path: source/Lingloom/android/app/build/outputs/apk/debug/app-debug.apk
+          
